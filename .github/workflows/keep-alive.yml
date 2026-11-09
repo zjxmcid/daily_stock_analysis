@@ -1,0 +1,28 @@
+# 仓库保活:GitHub 对 Fork 仓库的定时任务有「60 天无活动自动停用」规则,
+# 本工作流每月 1 日 / 15 日更新一次时间戳文件并提交,使仓库始终保持活跃。
+name: 仓库保活
+
+on:
+  schedule:
+    - cron: '0 3 1,15 * *'   # 每月 1 日和 15 日 03:00 UTC(北京时间 11:00)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 更新保活时间戳
+        run: |
+          mkdir -p .keepalive
+          date -u '+%Y-%m-%d %H:%M:%S UTC' > .keepalive/stamp.txt
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .keepalive/stamp.txt
+          git diff --cached --quiet && echo "无变化,跳过" || git commit -m "chore: keepalive $(date -u +%Y-%m-%d)"
+          git push
